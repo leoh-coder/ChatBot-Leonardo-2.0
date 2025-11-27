@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>ChatBot-Leonardo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <h2>Conversas</h2>
+
+      <form id="newConv">
+        <input id="title" type="text" placeholder="Título da conversa" required />
+        <button type="submit">Criar</button>
+      </form>
+
+      <div id="list" class="list"></div>
+    </aside>
+
+    <main class="main">
+      <div class="header">
+        <div><strong id="convTitle">Selecione uma conversa</strong></div>
+        <div class="actions">
+          <button id="renameBtn" class="btn orange" disabled>Renomear</button>
+          <button id="deleteBtn" class="btn red" disabled>Apagar</button>
+        </div>
+      </div>
+
+      <div id="msgs" class="msgs">
+        <div class="empty">Sem conversa selecionada.</div>
+      </div>
+
+      <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <div class="msg">carregando resposta…</div>
+      </div>
+
+      <form id="composer" class="composer">
+        <textarea id="input" placeholder="Escreva sua mensagem..." disabled required></textarea>
+        <button id="sendBtn" disabled>Enviar</button>
+      </form>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+# Ambientes virtuais
+.venv/
+Backend/.venv/
+
+# __pycache__
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Arquivos de ambiente
+.env
+Backend/.env
+
+# Índice FAISS (gerado automaticamente)
+Backend/data/.faiss_text/
+
+# IDEs
+.vscode/
+.idea/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Outros
+*.sqlite

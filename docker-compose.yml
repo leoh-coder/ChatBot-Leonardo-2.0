@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:16
+    container_name: leohchat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: leonardo
+      POSTGRES_PASSWORD: secret123
+      POSTGRES_DB: ChatBot_Leonardo
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leonardo -d ChatBot_Leonardo"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: Backend/Dockerfile
+    container_name: leohchat-api
+    env_file:
+      - Backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./Backend/data:/app/Backend/data:rw
+    ports:
+      - "8010:8010"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8010/ping || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  web:
+    image: nginx:stable-alpine
+    container_name: leohchat-web
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "5500:80"
+    volumes:
+      - ./Frontend:/usr/share/nginx/html:ro
+
+volumes:
+  pgdata:
