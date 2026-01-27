@@ -302,45 +302,94 @@ def _extract_date_filter(text: str) -> Optional[date]:
 def _extract_title(text: str) -> Optional[str]:
     if not text:
         return None
+
     quoted = re.findall(r"[\"“']([^\"”']+)[\"”']", text)
     if quoted:
-        return quoted[0].strip()
+        return _normalize_title(quoted[0].strip())
 
     t = text.strip()
 
-    verbos = "|".join([*TODO_CREATE_WORDS, *TODO_UPDATE_WORDS])
-    t = re.sub(rf"\b(?:{verbos})\b", "", t, flags=re.IGNORECASE)
+    verb_list: List[str] = (
+        list(TODO_CREATE_WORDS)
+        + list(TODO_UPDATE_WORDS)
+        + list(TODO_FINISH_WORDS)
+        + list(TODO_DELETE_WORDS)
+    )
+
+    verb_list = sorted(set(verb_list), key=len, reverse=True)
+
+    for v in verb_list:
+        t = re.sub(rf"\b{re.escape(v)}\b", "", t, flags=re.IGNORECASE)
 
     t = re.sub(r"\btarefa[s]?\b", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\bto-?do\b", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\blista\b", "", t, flags=re.IGNORECASE)
+
+    t = re.sub(r"\b(da|do|de|a|o|as|os)\b", " ", t, flags=re.IGNORECASE)
+
     t = re.sub(r"\bpara\b.*$", "", t, flags=re.IGNORECASE)
     t = re.sub(r"\bàs\s+\d{1,2}(?::\d{2})?\b", "", t, flags=re.IGNORECASE)
-    t = re.sub(r"\b\d{1,2}[:h]\d{0,2}\b", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\b(\d{1,2})(?::(\d{2}))?\s*h\b", "", t, flags=re.IGNORECASE)
     t = re.sub(r"\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b", "", t, flags=re.IGNORECASE)
     for k in _WEEKMAP.keys():
         t = re.sub(rf"\b{k}\b", "", t, flags=re.IGNORECASE)
     t = re.sub(r"\b(hoje|amanhã|depois de amanhã)\b", "", t, flags=re.IGNORECASE)
 
     t = re.sub(r"\s+", " ", t).strip()
+    t = re.sub(r"^[\s:;\-–—]+", "", t).strip()
+    t = re.sub(r"[\s:;\-–—]+$", "", t).strip()
+
+    t = _normalize_title(t)
     return t[:80] if t else None
+
+
+def _normalize_title(title: Optional[str]) -> Optional[str]:
+    if not title:
+        return None
+    t = title.strip().lower()
+
+    t = re.sub(r"^[\s:;\-–—]+", "", t)
+
+    t = re.sub(r"^(?:a|o|os|as|um|uma|uns|umas|do|da|dos|das|de)\s+", "", t)
+
+    t = re.sub(r"\s+", " ", t).strip()
+    return t or None
+
+
 
 def _find_todo_by_title(db: Session, title: Optional[str]) -> Optional[Todo]:
     if not title:
         return None
-    t = title.strip().lower()
-    stmt = (
-        select(Todo)
-        .where(func.lower(Todo.title) == t)
-        .order_by(Todo.id.desc())
-    )
-    found = db.scalars(stmt).first()
-    if found:
-        return found
-    stmt2 = (
-        select(Todo)
-        .where(Todo.title.ilike(f"%{t}%"))
-        .order_by(Todo.id.desc())
-    )
-    return db.scalars(stmt2).first()
+
+    raw = (title or "").strip().lower()
+    norm = _normalize_title(title) or raw
+    keys = []
+    for k in [raw, norm]:
+        k = (k or "").strip().lower()
+        if k and k not in keys:
+            keys.append(k)
+
+    for k in keys:
+        stmt = (
+            select(Todo)
+            .where(func.lower(Todo.title) == k)
+            .order_by(Todo.id.desc())
+        )
+        found = db.scalars(stmt).first()
+        if found:
+            return found
+
+    for k in keys:
+        stmt2 = (
+            select(Todo)
+            .where(Todo.title.ilike(f"%{k}%"))
+            .order_by(Todo.id.desc())
+        )
+        found = db.scalars(stmt2).first()
+        if found:
+            return found
+
+    return None
 
 #To-Do 
 def _handle_todo_chat(text: str, db: Session) -> str:
@@ -374,6 +423,7 @@ def _handle_todo_chat(text: str, db: Session) -> str:
     try:
         if action == "create":
             titulo = _extract_title(text) or "tarefa sem nome"
+            titulo = (_normalize_title(titulo) or titulo).strip()
             due = _extract_due_date(text)
             todo = todo_tool.create_todo(
                 db,
