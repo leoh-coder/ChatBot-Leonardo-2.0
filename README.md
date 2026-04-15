@@ -58,7 +58,6 @@ Similar ao ChatGPT:
 
 ### Infra  
 - Docker  
-- Docker Compose
 
 ---
 
